@@ -1,0 +1,10 @@
+{
+
+  "yfcc-batch1/747": [
+        ["sco"],
+        ["What are the differences between the first and third images?"],
+        ["What are the differences between the second and third images?"],
+        ["Is the cat in the first image in the sunshine?"]
+  ]
+
+}[{"image_id": "yfcc-batch1/747", "ann_type": "score", "score": "67.750"}, {"image_id": "yfcc-batch1/747", "ann_type": "class", "class": "good"}, {"image_id": "yfcc-batch1/752", "ann_type": "score", "score": "50.903"},
