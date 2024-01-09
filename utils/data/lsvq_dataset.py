@@ -77,7 +77,7 @@ class LSVQAlignDataset(VQADataset):
         vis_root = f"{data_path}/LSVQ/LSVQ"
         assert os.path.isdir(vis_root), f"CcSbuAlignDataset image directory {vis_root} not found, you need to download it from https://huggingface.co/datasets/Vision-CAIR/cc_sbu_align"
 
-        ann_paths = ["LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_ds_score.json"]
+        ann_paths = ["LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_ds_score.json", "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_train_ds_score.json"]
         q_mos_path = os.path.join(vis_root, 'a_prompt/prompt_list_noTask.json')
         q_ass_path = os.path.join(vis_root, 'a_prompt/prompt_list_noTask_ass.json')
 
