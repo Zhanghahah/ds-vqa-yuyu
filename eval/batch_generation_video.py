@@ -25,6 +25,7 @@ import json
 import collections
 import numpy as np
 import random
+from tqdm import tqdm
 
 
 def load_json(file_path):
@@ -134,10 +135,10 @@ def parse_args():
 
 def main():
     args = parse_args()
-    with open(f'./eval_data/{args.eval_data}.json', 'r') as file:
+    with open(os.path.join(args.eval_root, f'a_split_metadata/{args.eval_data}.json'), 'r') as file:
         data = json.load(file)
-    Q_MOS = json.load(open('./eval_data/prompt_list.json', 'r'))
-    Q_ASS = json.load(open('./eval_data/prompt_list_ass.json', 'r'))
+    Q_MOS = json.load(open(os.path.join(args.eval_root, 'a_prompt/prompt_list_noTask.json'), 'r'))
+    Q_ASS = json.load(open(os.path.join(args.eval_root, 'a_prompt/prompt_list_noTask_ass.json'), 'r'))
 
     if args.seed is not None:
         set_seed(args.seed)
@@ -155,9 +156,10 @@ def main():
         args=args,
     )
 
-
     for ck_name in args.checkpoint_names:
+        print(ck_name)
         get_results = collections.defaultdict(list)
+        model_type = args.checkpoint_path.split('/')[-1]
         ck_path = os.path.join(args.checkpoint_path, ck_name)
         print(ck_path)
         if ck_path is not None:
@@ -171,7 +173,7 @@ def main():
         model.vis_encoder = model.vis_encoder.to('cuda')
         model = model.half()
         print_rank_0(model)
-        for eval_idx, ann in enumerate(data['annotations']):
+        for eval_idx, ann in tqdm(enumerate(data['annotations'])):
             video_name = ann["image_id"]
             video_path = os.path.join(args.eval_root, video_name + ".mp4")
             video_data = load_and_transform_video(video_path,
@@ -205,30 +207,6 @@ def main():
             elif ann['ann_type'] == 'class':
                 question = random.choice(Q_ASS)
                 answer = ann['class']
-
-            # print(f'=========round {round+1}==============')
-            # question = q_i_pair[0]
-            # if len(q_i_pair) > 1:
-            #     # seperate by space
-            #     image_paths = q_i_pair[1].split(' ')
-            #     tmp_images = []
-            #     for image_path in image_paths:
-            #         image = Image.open(image_path.strip()).convert('RGB')
-            #         tmp_image_tensor = image_processor.preprocess(image, return_tensors='pt')['pixel_values'][
-            #             0].unsqueeze(0).cuda().half()
-            #         tmp_images.append(tmp_image_tensor)
-            #     images = images + tmp_images  # get all images
-            #     with_image = True
-            #     image_num = len(tmp_images)
-            # else:
-            #     image_num = 0
-            #     with_image = False
-            #
-            # if len(images) > 0:
-            #     image_tensor = torch.cat(images, dim=0)  # cat all images
-            # else:
-            #     raise ValueError("No image provided. Did not fix this in the modeling side yet.")
-
             full_prompt = TEMPLATE(question, with_image=with_image, first_message=True,
                                    num_images=image_num)
             full_prompt_ids = tokenizer(full_prompt).input_ids  # remove bos token
@@ -244,7 +222,7 @@ def main():
             generate_output = model.generate(image_tensor, input_ids,
                                              generation_length=256)
             # generation_kwargs={ 'num_beams':2,'num_return_sequences':1,'top_p':1,'do_sample':True, 'temperature':1}
-            print('ds-vqa-->', generate_output[1])
+            print('ds-vqa-->', generate_output[1], answer)
             get_results[video_name].append([question, generate_output[1], answer])
             extend_ids = generate_output[0].cpu().tolist()[0]
             while extend_ids[-1] == tokenizer.pad_token_id:
@@ -254,14 +232,14 @@ def main():
                 extend_ids.pop(0)
             system_instruct = system_instruct + full_prompt_ids + extend_ids  # entire input as system instruction for simplicity
             system_instruct = system_instruct + [tokenizer.eos_token_id]  # add eos token
-        print(get_results.items())
-        with open(f'./{args.output_filename}_{ck_name}.csv', mode='w', newline='', encoding='utf-8') as file:
+        with open(f'{args.output_filename}/pred_{model_type}_{ck_name}.csv', mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerow(['test_name', 'question', 'pred', 'answer'])
             for test_name, responses in get_results.items():
                 for response in responses:
                     print(response)
                     writer.writerow([test_name] + response)
+        print_rank_0("infer done !!")
 
 
 if __name__ == "__main__":
