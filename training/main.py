@@ -49,7 +49,7 @@ def parse_args():
     parser.add_argument(
         "--data_train_split_ratio",
         type=float,
-        default=0.9,
+        default=0.95,
         help="Ratio of dataset to be splitted as train data. The remaining becomes eval data.",
     )
     parser.add_argument('--dataset_names',
