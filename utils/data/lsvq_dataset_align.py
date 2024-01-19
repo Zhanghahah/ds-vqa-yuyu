@@ -1,0 +1,134 @@
+# This file is adapted from https://github.com/Zhanghahah/VQA-LLM
+# This dataset is from lsvq
+
+import os
+import random
+import decord
+import cv2
+import json
+from PIL import Image
+from pytorchvideo.data.encoded_video import EncodedVideo
+from .vqa_dataset import VQADataset
+import utils.data.DST as DST
+from utils.utils import get_rank, print_rank_0
+from .utils import save_debug_image, save_debug_text
+from decord import VideoReader, cpu
+from PIL import Image
+
+import numpy as np
+import torch
+
+
+def load_and_transform_video(video_path,
+                             video_decode_backend='opencv',
+                             clip_start_sec=0.0,
+                             clip_end_sec=None,
+                             num_frames=4,
+                             sample_fps=1,
+                             ):
+    if video_decode_backend == 'pytorchvideo':
+        #  decord pyav
+        video = EncodedVideo.from_path(video_path, decoder="decord", decode_audio=False)
+        duration = video.duration
+        start_sec = clip_start_sec  # secs
+        end_sec = clip_end_sec if clip_end_sec is not None else duration  # secs
+        video_data = video.get_clip(start_sec=start_sec, end_sec=end_sec)
+
+    elif video_decode_backend == 'decord':
+        vr = VideoReader(video_path, ctx=cpu(0))
+        total_frame_num = len(vr)
+        video_fps = vr.get_avg_fps()
+        sample_gap = round(video_fps / sample_fps)
+        sample_frame_idx = [i for i in range(0, total_frame_num, sample_gap)]
+        video_data = vr.get_batch(sample_frame_idx).asnumpy()   # (f, h, w, 3)
+        frame_time = [x / video_fps for x in sample_frame_idx]
+
+        # decord.bridge.set_bridge('torch')
+        # decord_vr = VideoReader(video_path, ctx=cpu(0))
+        # duration = len(decord_vr)
+        # frame_id_list = np.linspace(0, duration-1, num_frames, dtype=int)
+        # video_data = decord_vr.get_batch(frame_id_list)
+        # video_data = video_data.permute(3, 0, 1, 2)  # (T, H, W, C) -> (C, T, H, W)  ?
+
+    elif video_decode_backend == 'opencv':
+        cv2_vr = cv2.VideoCapture(video_path)
+
+        duration = int(cv2_vr.get(cv2.CAP_PROP_FRAME_COUNT))
+        frame_id_list = np.linspace(0, duration-1, num_frames, dtype=int)
+
+        video_data = []
+        for frame_idx in frame_id_list:
+            cv2_vr.set(cv2.CAP_PROP_POS_FRAMES, frame_idx - 1)
+            ret, frame = cv2_vr.read()
+            try:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            except:
+                print_rank_0(video_path)
+                while frame is None:
+                    random_frame_idx = np.random.choice((duration - 1) // 2)
+                    cv2_vr.set(cv2.CAP_PROP_POS_FRAMES, random_frame_idx)
+                    _, frame = cv2_vr.read()
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # cv2.imwrite('./data_debug_vis/debug.jpg', frame)
+            # frame = Image.open('./data_debug_vis/debug.jpg').convert("RGB")
+
+            video_data.append(frame)
+        cv2_vr.release()
+        # video_data = torch.stack(video_data, dim=1)
+    else:
+        raise NameError('video_decode_backend should specify in (pytorchvideo, decord, opencv)')
+    return video_data
+
+
+class LSVQAlignDataset(VQADataset):
+    def __init__(self, data_path,
+                 data_debug_path,
+                 per_sample_image,
+                 video_loader_type,
+                 tokenizer,
+                 vis_processor,
+                 add_eos=True, ignore_instruction=True,**kwargs):
+        vis_root = f"{data_path}/LSVQ/LSVQ"
+        feature_root = "/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_feature_1fps"
+        assert os.path.isdir(vis_root), f"LSVQAlignDataset image directory {vis_root} not found, you need to check the image path"
+
+        ann_paths = ["LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_ds_score.json"]  #  "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_train_ds_score.json"
+        q_mos_path = os.path.join(vis_root, 'a_prompt/prompt_list_noTask.json')
+        q_ass_path = os.path.join(vis_root, 'a_prompt/prompt_list_noTask_ass.json')
+
+        self.Q_MOS = json.load(open(q_mos_path, 'r'))
+        self.Q_ASS = json.load(open(q_ass_path, 'r'))
+        self.video_loader_type = video_loader_type
+        self.feature_root = feature_root
+
+        real_ann_paths = []
+        for ann_path in ann_paths:
+            ann_path = f"{data_path}/{ann_path}"
+            real_ann_paths.append(ann_path)
+            assert os.path.isfile(ann_path), f"LSVQAlignDataset annotation file {ann_path} not found, you need to identify it from your folder"
+        super().__init__(data_path, data_debug_path, per_sample_image, tokenizer, vis_processor,
+                         vis_root, real_ann_paths, annotation_key="annotations", **kwargs)
+
+    def process_text(self, ann, data_debug_path=None, data_debug_counter=0, first_message=True):
+        # random select a question
+
+        if ann['ann_type'] == 'score':
+            question = random.choice(self.Q_MOS)
+            answer = ann["score"]
+        elif ann['ann_type'] == 'class':
+            question = random.choice(self.Q_ASS)
+            answer = ann['class']
+
+        instruction = self.prompter(question, with_image=True, first_message=first_message)
+        save_debug_text([instruction, answer], data_debug_path, data_debug_counter, get_rank())
+        return dict(instruction=instruction, answer=answer)
+
+    def process_image(self, ann, data_debug_path=None, data_debug_counter=0):
+        feature_path = os.path.join(self.feature_root, ann["image_id"])
+
+        image_list = []
+        for img_feat_file in os.listdir(feature_path):
+            img_feat = torch.load(os.path.join(feature_path, img_feat_file)).unsqueeze(0)
+            image_list.append(img_feat)
+        images = torch.cat(image_list, 0).mean(0)
+        return images
