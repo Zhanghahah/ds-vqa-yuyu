@@ -54,11 +54,20 @@ class DataCollatorPadToMaxLen:
         attention_mask = pad_sequence([default_collate(f['attention_mask']) for f in data],
                                         padding_value=0,
                                         batch_first=True)
-        image = torch.concat([default_collate(f['image']) for f in data], dim=0).reshape((-1,) + data[0]["image"][0].shape[-4:])
-        image_num = [f['image_num'] for f in data] 
+        frames_count = np.unique([f['image'][0].shape[0] for f in data])
+        if len(frames_count) > 1:
+            # dynamic videp
+            image = [f['image'][0] for f in data]
+        else:
+            _len = len(data[0]["image"][0].shape)
+            image = torch.concat([default_collate(f['image']) for f in data], dim=0).reshape((-1,) + data[0]["image"][0].shape[-_len:])
+        image_id = [f['image_id'] for f in data]
+        image_num = [f['image_num'] for f in data]
         batch['input_ids'] = input_ids
         batch['labels'] = labels
         batch['attention_mask'] = attention_mask
         batch['image'] = image
         batch['image_num'] = image_num
+        batch['frames_count'] = frames_count
+        batch['image_id'] = image_id
         return batch
