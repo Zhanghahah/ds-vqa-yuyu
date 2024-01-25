@@ -188,7 +188,7 @@ class VQADataset(Dataset):
             labels_list = DST.flatten(labels_list)
             return input_list, attention_mask_list, labels_list
         image_number = 0 
-        original_output = {"input_ids": [], "attention_mask": [], "labels": [], "image": []} #copy.deepcopy(self.system_instruct)
+        original_output = {"input_ids": [], "attention_mask": [], "labels": [], "image": [], "image_id" : None} #copy.deepcopy(self.system_instruct)
         # original_output["image"] = []
         for res in res_list:
             # need to check if it has image or not
@@ -203,6 +203,7 @@ class VQADataset(Dataset):
         if image_number == 0:
             raise ValueError("image number should not be zero, we now did not support no-image case.")
         original_output["image_num"] = image_number
+        original_output["image_id"] = res_list[0]["image_id"]
         return original_output
 
     def __getitem__(self, index):
@@ -219,6 +220,7 @@ class VQADataset(Dataset):
             res = self.tokenize(text)
             res.update(image=image)
             res.update(text)
+            res.update(image_id=ann['image_id'])
             res_list.append(res)
         
         output = self.merge_all_images(res_list)
