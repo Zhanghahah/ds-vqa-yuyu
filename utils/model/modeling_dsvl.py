@@ -20,6 +20,20 @@ import numpy as np
 from .vis_proj import VisProjection_vit, VisProjection_perceiver
 from einops import rearrange
 
+
+def task_identifier(img):
+    do_extract_feat = True
+    if len(img.shape) == 5:
+        bs, fn, _, _, _ = img.shape
+        img = rearrange(img, 'b t c h w -> (b t) c h w')
+    elif len(img.shape) == 4:
+        bs, _, _, _ = img.shape
+
+    elif len(img.shape) == 3:
+        bs, seqlen, _ = img.shape
+        do_extract_feat = False
+    return do_extract_feat, img, bs
+
 def get_name(huggingface_path):
     if 'opt' in huggingface_path.lower():
         return 'opt'
@@ -44,12 +58,12 @@ def create_dsvl_model_and_transforms(
 
     if 'qwen' in args.vision_model_name_or_path.lower():
         # use a fake config for consistent
-        vis_config = AutoConfig.from_pretrained("laion/CLIP-ViT-bigG-14-laion2B-39B-b160k")
+        vis_config = AutoConfig.from_pretrained(args.vision_model_name_or_path)
         vis_config = vis_config.vision_config
         vis_encoder = VisionTransformer(
             image_size=448,
-            patch_size=vis_config.patch_size,
-            width=vis_config.hidden_size,
+            patch_size=vis_config.patch_size, #
+            width=vis_config.hidden_size,  # 1664
             layers=vis_config.num_hidden_layers,
             heads=vis_config.num_attention_heads,
             mlp_size=vis_config.intermediate_size,
@@ -59,6 +73,7 @@ def create_dsvl_model_and_transforms(
         vis_config.hidden_size = 4096  # we need to change the hidden size to 4096
     elif 'clip' in args.vision_model_name_or_path.lower():
         vis_encoder = CLIPVisionModel.from_pretrained(args.vision_model_name_or_path)
+
         vis_config = vis_encoder.config
     else:
         raise ValueError("We currently only support qwen's modifed clip and other clip models")
@@ -111,7 +126,7 @@ class DeepSpeedViLModel(nn.Module):
         super().__init__()
         self.vis_encoder = vis_encoder
 
-        self.lang_decoder = lang_decoder 
+        self.lang_decoder = lang_decoder
         self.tokenizer = tokenizer 
         self.args = args
         self._enable_special_token()
@@ -284,8 +299,10 @@ class DeepSpeedViLModel(nn.Module):
             use_cache=False,
             output_attentions=False, 
             output_hidden_states=False,
-            return_dict=True):
-        
+            return_dict=True,
+            save_img_feature=False
+            ):
+
         assert attention_mask is not None, "attention mask is required"
         assert input_labels is not None, "input labels is required"
 
@@ -303,17 +320,30 @@ class DeepSpeedViLModel(nn.Module):
         else:
             # do not update vis encoder
             with torch.no_grad():
-                if len(img.shape) == 5:  # bs, fn, 3, 224, 224
-                    bs, fn, _, _, _ = img.shape
-                    img = rearrange(img, 'b t c h w -> (b t) c h w')
-                elif len(img.shape) == 4:
-                    bs, _, _, _ = img.shape
-                img_feature = self.vis_encoder(img)
-                if not isinstance(img_feature, torch.Tensor):
-                    img_feature = img_feature.last_hidden_state
-                    if img_feature.shape[0] != bs:
-                        img_feature = rearrange(img_feature, '(bs fn) seq hid -> bs fn seq hid', bs=bs)
-                        img_feature = torch.mean(img_feature, 1)  # this should be (bs, seqlen, dim)
+                if type(img) is list:  # bs, fn, 3, 224, 224
+                    img_feature_list = []
+                    bs = len(img)
+                    for each_img in img:
+                        img_tensor = each_img
+                        fn, _, _, _ = img_tensor.shape
+                        img_feature = self.vis_encoder(img_tensor)
+                        if not isinstance(img_feature, torch.Tensor):
+                            img_feature = img_feature.last_hidden_state
+                        img_feature = torch.mean(img_feature, 0).unsqueeze(0)
+                        img_feature_list.append(img_feature)
+                    img_feature = torch.concat(img_feature_list, dim=0)
+
+                elif type(img) is torch.Tensor:
+                    do_extract_feat, img, bs = task_identifier(img)
+                    if do_extract_feat:
+                        img_feature = self.vis_encoder(img)
+                        if not isinstance(img_feature, torch.Tensor):
+                            img_feature = img_feature.last_hidden_state
+                            if img_feature.shape[0] != bs:
+                                img_feature = rearrange(img_feature, '(bs fn) seq hid -> bs fn seq hid', bs=bs)
+                                img_feature = torch.mean(img_feature, 1)  # this should output (bs, seqlen, dim)
+                    else:
+                        img_feature = img
         img_proj = self.projection(img_feature)
        
         hidden_states, attention_mask, input_labels = self.concat(img_proj, lang, attention_mask, input_labels, image_num)
@@ -367,19 +397,16 @@ class DeepSpeedViLModel(nn.Module):
         attention_mask = torch.ones_like(lang) 
         input_labels = torch.ones_like(lang) 
         # this part for now does not require gradient
-        if len(img.shape) == 5:  # bs, fn, 3, 224, 224
-            bs, fn, _, _, _ = img.shape
-            img = rearrange(img, 'b t c h w -> (b t) c h w')
-        elif len(img.shape) == 4:
-            bs, _, _, _ = img.shape
-        img_feature = self.vis_encoder(img)
-        if not isinstance(img_feature, torch.Tensor):
-            img_feature = img_feature.last_hidden_state
-            if img_feature.shape[0] != bs:
-                img_feature = rearrange(img_feature, '(bs fn) seq hid -> bs fn seq hid', bs=bs)
-                img_feature = torch.mean(img_feature, 1)  # this should be (bs, seqlen, dim)
-        if not isinstance(img_feature, torch.Tensor):
-            img_feature = img_feature.last_hidden_state
+        do_extract_feat, img, bs = task_identifier(img)
+        if do_extract_feat:
+            img_feature = self.vis_encoder(img)
+            if not isinstance(img_feature, torch.Tensor):
+                img_feature = img_feature.last_hidden_state
+                if img_feature.shape[0] != bs:
+                    img_feature = rearrange(img_feature, '(bs fn) seq hid -> bs fn seq hid', bs=bs)
+                    img_feature = torch.mean(img_feature, 1)  # this should output (bs, seqlen, dim)
+        else:
+            img_feature = img
         img_proj = self.projection(img_feature)
         hidden_states, attention_mask, input_labels = self.concat(img_proj, lang, attention_mask, input_labels, image_num=[1], do_generation=True)
         
