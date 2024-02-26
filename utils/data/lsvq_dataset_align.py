@@ -17,6 +17,7 @@ from PIL import Image
 
 import numpy as np
 import torch
+from tqdm import tqdm
 
 
 def load_and_transform_video(video_path,
@@ -54,26 +55,35 @@ def load_and_transform_video(video_path,
         cv2_vr = cv2.VideoCapture(video_path)
 
         duration = int(cv2_vr.get(cv2.CAP_PROP_FRAME_COUNT))
-        frame_id_list = np.linspace(0, duration-1, num_frames, dtype=int)
+        if duration == 0:
+            frame_id_list = np.array([0])
+        else:
+            frame_id_list = np.linspace(0, duration-1, duration, dtype=int)
 
         video_data = []
-        for frame_idx in frame_id_list:
+        print_rank_0(f"Processing video {video_path}, frame_id_list: {frame_id_list}")
+        for frame_idx in tqdm(frame_id_list):
             cv2_vr.set(cv2.CAP_PROP_POS_FRAMES, frame_idx - 1)
             ret, frame = cv2_vr.read()
-            try:
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            except:
-                print_rank_0(video_path)
-                while frame is None:
-                    random_frame_idx = np.random.choice((duration - 1) // 2)
-                    cv2_vr.set(cv2.CAP_PROP_POS_FRAMES, random_frame_idx)
-                    _, frame = cv2_vr.read()
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if frame is None:
+                continue
+            # try:
+            #     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # except:
+            #
+            #     while frame is None:
+            #         random_frame_idx = np.random.choice((duration - 1) // 2)
+            #         cv2_vr.set(cv2.CAP_PROP_POS_FRAMES, random_frame_idx)
+            #         _, frame = cv2_vr.read()
+            #     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             # cv2.imwrite('./data_debug_vis/debug.jpg', frame)
             # frame = Image.open('./data_debug_vis/debug.jpg').convert("RGB")
 
             video_data.append(frame)
         cv2_vr.release()
+        assert len(video_data) != 0, "We need at least one frame for feature extraction."
         # video_data = torch.stack(video_data, dim=1)
     else:
         raise NameError('video_decode_backend should specify in (pytorchvideo, decord, opencv)')
@@ -87,19 +97,21 @@ class LSVQAlignDataset(VQADataset):
                  video_loader_type,
                  tokenizer,
                  vis_processor,
-                 add_eos=True, ignore_instruction=True,**kwargs):
+                 add_eos=True, ignore_instruction=True, save_video_feat=False, **kwargs):
         vis_root = f"{data_path}/LSVQ/LSVQ"
         feature_root = "/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_feature_1fps"
         assert os.path.isdir(vis_root), f"LSVQAlignDataset image directory {vis_root} not found, you need to check the image path"
 
-        ann_paths = ["LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_ds_score.json"]  #  "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_train_ds_score.json"
-        q_mos_path = os.path.join(vis_root, 'a_prompt/prompt_list_noTask.json')
-        q_ass_path = os.path.join(vis_root, 'a_prompt/prompt_list_noTask_ass.json')
+        ann_paths = ["LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_ds_score.json", "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_train_ds_score.json",
+                     "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_1080p_ds.json"]
+        q_mos_path = os.path.join(data_path, 'a_prompt/prompt_list_noTask.json')
+        q_ass_path = os.path.join(data_path, 'a_prompt/prompt_list_noTask_ass.json')
 
         self.Q_MOS = json.load(open(q_mos_path, 'r'))
         self.Q_ASS = json.load(open(q_ass_path, 'r'))
         self.video_loader_type = video_loader_type
         self.feature_root = feature_root
+        self.save_video_feat = save_video_feat
 
         real_ann_paths = []
         for ann_path in ann_paths:
@@ -124,11 +136,31 @@ class LSVQAlignDataset(VQADataset):
         return dict(instruction=instruction, answer=answer)
 
     def process_image(self, ann, data_debug_path=None, data_debug_counter=0):
-        feature_path = os.path.join(self.feature_root, ann["image_id"])
+        if self.save_video_feat:
+            feature_path = os.path.join(self.feature_root, ann["image_id"])
+            if not os.path.exists(feature_path):
+                feature_path = os.path.join(self.feature_root, ann["image_id"] + ".mp4")
+            image_list = []
+            for img_feat_file in os.listdir(feature_path):
+                img_feat = torch.load(os.path.join(feature_path, img_feat_file)).unsqueeze(0)
+                image_list.append(img_feat)
+            images = torch.cat(image_list, 0).mean(0)
+            return images
+        else:
+            video_path = os.path.join(self.vis_root, ann["image_id"] + ".mp4")
+            video_data = load_and_transform_video(video_path,
+                                                  video_decode_backend=self.video_loader_type, clip_start_sec=0.0,
+                                                  clip_end_sec=None, num_frames=8, sample_fps=1)
+            image_list = []
+            for image in video_data:
+                # save_debug_image(image_path, data_debug_path, data_debug_counter, get_rank(), img_idx=0)
+                # image = Image.open(image_path).convert("RGB")
 
-        image_list = []
-        for img_feat_file in os.listdir(feature_path):
-            img_feat = torch.load(os.path.join(feature_path, img_feat_file)).unsqueeze(0)
-            image_list.append(img_feat)
-        images = torch.cat(image_list, 0).mean(0)
-        return images
+                image = self.vis_processor(image)  # (720, 1280, 3)
+                try:
+                    image = image['pixel_values'][0]
+                    image_list.append(image)
+                except:
+                    continue
+            images = np.stack(image_list, 0)
+            return images
