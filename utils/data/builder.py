@@ -17,7 +17,13 @@ from .otter_mimicit_tvc_dataset import OtterMimicitTvcDataset  # noqa: F401
 from .otter_mimicit_vst_dataset import OtterMimicitVstDataset  # noqa: F401
 from .sparkles_dialogue_dataset import SparklesDialogueDataset  # noqa: F401
 from .vqa_dataset import ConcatDataset  # noqa: F401
-from .lsvq_dataset import LSVQAlignDataset
+from .lsvq_dataset import LSVQDataset
+from .lsvq_dataset_align import LSVQAlignDataset
+from .lbvd_dataset import LBVDDataset
+from .Koki_datasets import KokiDataset
+from .youtube_ygc_dataset import YoutubeUGCataset
+from .kvq_dataset import KVQDataset
+from .live_vqc_dataset import LiveVQCDataset
 from utils.utils import print_rank_0
 
 
@@ -127,7 +133,49 @@ def build_dataset(data_path, data_debug_path, dataset_name, dataset_sample,
             **kwargs,
         )
     elif dataset_name == 'lsvq':
+        dataset = LiveVQDCataset(
+            data_path,
+            data_debug_path,
+            dataset_concatenate_samples,
+            **kwargs,
+        )
+    elif dataset_name == 'lsvq_align':
         dataset = LSVQAlignDataset(
+            data_path,
+            data_debug_path,
+            dataset_concatenate_samples,
+            **kwargs,
+        )
+    elif dataset_name == "lbvd":
+        dataset = LBVDDataset(
+            data_path,
+            data_debug_path,
+            dataset_concatenate_samples,
+            **kwargs,
+        )
+    elif dataset_name == "1K":
+        dataset = KokiDataset(
+            data_path,
+            data_debug_path,
+            dataset_concatenate_samples,
+            **kwargs,
+        )
+    elif dataset_name == "youtube_ygc":
+        dataset = YoutubeUGCataset(
+            data_path,
+            data_debug_path,
+            dataset_concatenate_samples,
+            **kwargs,
+        )
+    elif dataset_name == "live_vqc":
+        dataset = LiveVQCDataset(
+            data_path,
+            data_debug_path,
+            dataset_concatenate_samples,
+            **kwargs,
+        )
+    elif dataset_name == "kvq":
+        dataset = KVQDataset(
             data_path,
             data_debug_path,
             dataset_concatenate_samples,
