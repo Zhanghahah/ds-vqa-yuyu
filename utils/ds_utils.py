@@ -38,6 +38,9 @@ def get_train_ds_config(args,
         "memory_efficient_linear": False,
     }
     output =  {
+        "checkpoint": {
+            "use_node_local_storage": True
+        },
         "train_batch_size": GLOBAL_BATCH_SIZE,
         "train_micro_batch_size_per_gpu": MICRO_BATCH_SIZE,
         "steps_per_print": 10,
