@@ -52,7 +52,7 @@ def add_special_token(tokenizer):
 def get_image_num_map(tokenizer):
     image_num_map = {}
     for key in image_mapping_dict:
-        image_num_map[image_mapping_dict[key]] = tokenizer(image_mapping_dict[key])['input_ids'][1:] # remove <s>
+        image_num_map[image_mapping_dict[key]] = tokenizer(image_mapping_dict[key])['input_ids'] # remove <s>
     image_num_map[DEFAULT_HUMAN_IMAGE_PRETOKEN] = image_num_map[DEFAULT_HUMAN_IMAGE_PRETOKEN][0] # convert list to number 
     return image_num_map
 

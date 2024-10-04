@@ -101,7 +101,7 @@ class LSVQAlignDataset(VQADataset):
                  vis_processor,
                  add_eos=True, ignore_instruction=True, save_video_feat=True, **kwargs):
         vis_root = f"{data_path}/LSVQ/LSVQ"
-        feature_root = "/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_feature_1fps"
+        feature_root = "/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_feature_8B_bf16"
         motion_root = "/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_SlowFast2_feature"
         assert os.path.isdir(
             vis_root), f"LSVQAlignDataset image directory {vis_root} not found, you need to check the image path"

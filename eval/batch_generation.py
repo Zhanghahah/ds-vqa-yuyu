@@ -136,6 +136,7 @@ def main():
         torch.cuda.manual_seed_all(args.seed)
             
     tokenizer = AutoTokenizer.from_pretrained(args.lm_model_name_or_path,
+                                              cache_path=os.path.join(args.lm_model_name_or_path, ".."),
                                               fast_tokenizer=True)
     tokenizer.padding_side = 'right'
     model, image_processor, tokenizer = create_model_and_transforms(

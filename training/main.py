@@ -30,6 +30,8 @@ from utils.ds_utils import get_train_ds_config
 from utils.module.lora import convert_linear_layer_to_lora, only_optimize_lora_parameters, fuse_lora, unfuse_lora
 from utils.model import create_dsvl_model_and_transforms
 
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description=
@@ -147,6 +149,10 @@ def parse_args():
                         type=str,
                         default=None,
                         help="Where to store the model.")
+    parser.add_argument("--pre_output_dir",
+                        type=str,
+                        default=None,
+                        help="Where to store the trained model.")
     parser.add_argument("--seed",
                         type=int,
                         default=1234,
@@ -176,6 +182,12 @@ def parse_args():
         type=str,
         default='baseline',
         help="[baseline, vit, or perceiver], used to projection vision feature to LLM embedding",
+    )
+    parser.add_argument(
+        "--video_loader_type",
+        type=str,
+        default='opencv',
+        help="[decord, pytorchvideo, opencv], used to encode video"
     )
     # deepspeed features
     parser.add_argument(
@@ -214,8 +226,13 @@ def parse_args():
     parser.add_argument('--only_optimize_lora',
                         action='store_true',
                         help='Only optimize the LoRA parameters.')
+    parser.add_argument('--save_img_feature',
+                    action='store_true',
+                    help='enable save image feature')
 
-
+    parser.add_argument('--motion_token',
+                        action='store_true',
+                        help='enable motion token')
     parser = deepspeed.add_config_arguments(parser)
     args = parser.parse_args()
 
@@ -252,7 +269,7 @@ def main():
     # If passed along, set the training seed now.
     set_random_seed(args.seed)
 
-    torch.distributed.barrier()
+    # torch.distributed.barrier()
     tokenizer = AutoTokenizer.from_pretrained(args.lm_model_name_or_path,
                                               fast_tokenizer=True)
     tokenizer.padding_side = 'right'
@@ -278,7 +295,7 @@ def main():
         args.dataset_samples =  [args.dataset_samples[0]] * len(args.dataset_names)
     if len(args.dataset_concatenate_samples) < len(args.dataset_names):
         assert len(args.dataset_concatenate_samples) == 1, "when args.dataset_concatenate_samples is not the same length as args.dataset_names, it should be only one number"
-        args.dataset_concatenate_samples =  [args.dataset_concatenate_samples[0]] * len(args.dataset_names)
+        args.dataset_concatenate_samples = [args.dataset_concatenate_samples[0]] * len(args.dataset_names)
     # convert to int
     args.dataset_concatenate_samples = [int(i) for i in args.dataset_concatenate_samples]
 
@@ -289,8 +306,10 @@ def main():
         args.dataset_samples,
         args.dataset_concatenate_samples,
         args.max_num_image_per_sample,
+        video_loader_type=args.video_loader_type,
         vis_processor=image_processor,
         tokenizer=tokenizer,
+        save_video_feat=args.save_img_feature
     )
     # split the dataset into train and evaluation
     total_data = len(dataset)
@@ -342,11 +361,13 @@ def main():
         dist_init_required=True)
 
     start_epoch = 0
-    # let load checkpoint 
-    if os.path.exists(os.path.join(args.output_dir, 'latest')):
+    # let load checkpoint
+    print_rank_0(args.pre_output_dir)
+    if os.path.exists(os.path.join(args.pre_output_dir + '_kvq_ft', 'latest')):
+        print_rank_0("Resume training from LSVQ !")
         # we have the deepspeed chekpoint so it is a resumed job
         # TODO: after loading the ckpt, the global step is not loaded. Need to ask Tunji/Ammar for help.
-        _, client_state = model.load_checkpoint(args.output_dir)
+        _, client_state = model.load_checkpoint(args.pre_output_dir + '_kvq_ft')
         start_epoch = client_state['epoch']
         best_loss = client_state['best_loss']
         random.setstate(client_state['random_rng_state'])
@@ -363,13 +384,34 @@ def main():
         for step, batch in enumerate(eval_dataloader):
             with torch.no_grad():
                 batch = to_device(batch, device)
-                loss = model(
-                    batch["image"].half() ,
-                    batch["input_ids"],
-                    attention_mask=batch["attention_mask"],
-                    input_labels=batch["labels"],
-                    image_num=batch["image_num"],
-                )[0]
+                if type(batch['image']) is list:
+                    images = [torch.from_numpy(image).to(device).bfloat16() for image in batch['image']]
+                else:
+                    # images = batch["image"].half()
+                    images = batch["image"].bfloat16()
+                    if args.motion_token:
+                        motion = batch['motion'].bfloat16()
+                        loss = model(
+                            images,
+                            batch["input_ids"],
+                            motion=motion,
+                            attention_mask=batch["attention_mask"],
+                            input_labels=batch["labels"],
+                            image_num=batch["image_num"],
+                            use_img_feat=args.save_img_feature,
+                            motion_token=args.motion_token
+                        )[0]
+                    else:
+                        loss = model(
+                            images,
+                            batch["input_ids"],
+                            attention_mask=batch["attention_mask"],
+                            input_labels=batch["labels"],
+                            image_num=batch["image_num"],
+                            use_img_feat=args.save_img_feature,
+                            motion_token=args.motion_token
+                        )[0]
+
                 print_rank_0(f"step: {step}, loss: {loss}", args.global_rank)
             acc_loss += loss
         model.train()
@@ -385,6 +427,7 @@ def main():
     best_loss = 1e6
 
     print_rank_0("***** Running training *****", args.global_rank)
+    print_rank_0(f"******* start from epoch: {start_epoch}")
     for epoch in range(start_epoch, args.num_train_epochs):
         print_rank_0(
             f"Beginning of Epoch {epoch+1}/{args.num_train_epochs}, Total Micro Batches {len(train_dataloader)}",
@@ -393,17 +436,40 @@ def main():
         acc_loss = 0
         for step, batch in enumerate(train_dataloader):
             batch = to_device(batch, device)  #torch.size(1, 3, 224, 224]) #torch.Size([1, 1, 3, 224, 224])
-            images = batch["image"].half()   # image:[1, 3, 224, 224]; video: we hope the shape is [bs, 3, fs, 224, 224]
+            if type(batch['image']) is list:
+                images = [torch.from_numpy(image).to(device).bfloat16() for image in batch['image']]
+            else:
+                # image:[1, 3, 224, 224]; video: we hope the shape is [bs, 3, fs, 224, 224]
+                # for motion and image token, we hope the shape is bs, f, 257, 1024
+                # images = batch["image"].half()
+                images = batch["image"].bfloat16()
             input_ids = batch["input_ids"]
             attention_mask = batch["attention_mask"]
             labels = batch["labels"]
-            loss = model(
-                images,
-                input_ids,
-                attention_mask=attention_mask,
-                input_labels=labels,
-                image_num=batch["image_num"],
-            )[0]
+            if args.motion_token:
+                motion = batch['motion'].bfloat16()
+                loss = model(
+                    images,
+                    input_ids,
+                    motion,
+                    attention_mask=attention_mask,
+                    input_labels=labels,
+                    image_num=batch["image_num"],
+                    use_img_feat=args.save_img_feature,
+                    motion_token=args.motion_token
+                )[0]
+            else:
+                loss = model(
+                    images,
+                    input_ids,
+                    attention_mask=attention_mask,
+                    input_labels=labels,
+                    image_num=batch["image_num"],
+                    use_img_feat=args.save_img_feature,
+                    motion_token=args.motion_token
+                )[0]
+
+
             print_rank_0(f"step: {step}, loss: {loss}", args.global_rank)
             acc_loss += loss.detach().clone()
             model.backward(loss)
@@ -437,7 +503,7 @@ def main():
             'epoch': epoch + 1, # start from next epoch
             'best_loss': best_loss,
         }
-        model.save_checkpoint(args.output_dir, client_state=client_state) # save to the latest
+        model.save_checkpoint(args.output_dir + "_kvq_ft", client_state=client_state) # save to the latest
 
 
 if __name__ == "__main__":

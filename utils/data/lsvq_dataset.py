@@ -23,7 +23,8 @@ def load_and_transform_video(video_path,
                              video_decode_backend='opencv',
                              clip_start_sec=0.0,
                              clip_end_sec=None,
-                             num_frames=4
+                             num_frames=4,
+                             sample_fps=1,
                              ):
     if video_decode_backend == 'pytorchvideo':
         #  decord pyav
@@ -34,16 +35,23 @@ def load_and_transform_video(video_path,
         video_data = video.get_clip(start_sec=start_sec, end_sec=end_sec)
 
     elif video_decode_backend == 'decord':
-        decord.bridge.set_bridge('torch')
-        decord_vr = VideoReader(video_path, ctx=cpu(0))
-        duration = len(decord_vr)
-        frame_id_list = np.linspace(0, duration-1, num_frames, dtype=int)
-        video_data = decord_vr.get_batch(frame_id_list)
-        video_data = video_data.permute(3, 0, 1, 2)  # (T, H, W, C) -> (C, T, H, W)
+        vr = VideoReader(video_path, ctx=cpu(0))
+        total_frame_num = len(vr)
+        video_fps = vr.get_avg_fps()
+        sample_gap = round(video_fps / sample_fps)
+        sample_frame_idx = [i for i in range(0, total_frame_num, sample_gap)]
+        video_data = vr.get_batch(sample_frame_idx).asnumpy()   # (f, h, w, 3)
+        frame_time = [x / video_fps for x in sample_frame_idx]
+
+        # decord.bridge.set_bridge('torch')
+        # decord_vr = VideoReader(video_path, ctx=cpu(0))
+        # duration = len(decord_vr)
+        # frame_id_list = np.linspace(0, duration-1, num_frames, dtype=int)
+        # video_data = decord_vr.get_batch(frame_id_list)
+        # video_data = video_data.permute(3, 0, 1, 2)  # (T, H, W, C) -> (C, T, H, W)  ?
 
     elif video_decode_backend == 'opencv':
         cv2_vr = cv2.VideoCapture(video_path)
-
 
         duration = int(cv2_vr.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_id_list = np.linspace(0, duration-1, num_frames, dtype=int)
@@ -72,17 +80,24 @@ def load_and_transform_video(video_path,
     return video_data
 
 
-class LSVQAlignDataset(VQADataset):
-    def __init__(self, data_path, data_debug_path, per_sample_image, tokenizer, vis_processor, add_eos=True, ignore_instruction=True, **kwargs):
+class LSVQDataset(VQADataset):
+    def __init__(self, data_path,
+                 data_debug_path,
+                 per_sample_image,
+                 video_loader_type,
+                 tokenizer,
+                 vis_processor,
+                 add_eos=True, ignore_instruction=True, save_video_feat=False, **kwargs):
         vis_root = f"{data_path}/LSVQ/LSVQ"
         assert os.path.isdir(vis_root), f"LSVQAlignDataset image directory {vis_root} not found, you need to check the image path"
 
         ann_paths = ["LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_ds_score.json"]  #  "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_train_ds_score.json"
-        q_mos_path = os.path.join(vis_root, 'a_prompt/prompt_list_noTask.json')
-        q_ass_path = os.path.join(vis_root, 'a_prompt/prompt_list_noTask_ass.json')
+        q_mos_path = os.path.join(data_path, 'a_prompt/prompt_list_noTask.json')
+        q_ass_path = os.path.join(data_path, 'a_prompt/prompt_list_noTask_ass.json')
 
         self.Q_MOS = json.load(open(q_mos_path, 'r'))
         self.Q_ASS = json.load(open(q_ass_path, 'r'))
+        self.video_loader_type = video_loader_type
 
         real_ann_paths = []
         for ann_path in ann_paths:
@@ -109,8 +124,8 @@ class LSVQAlignDataset(VQADataset):
     def process_image(self, ann, data_debug_path=None, data_debug_counter=0):
         video_path = os.path.join(self.vis_root, ann["image_id"] + ".mp4")
         video_data = load_and_transform_video(video_path,
-                                 video_decode_backend='opencv', clip_start_sec=0.0,
-                                 clip_end_sec=None, num_frames=8)
+                                 video_decode_backend=self.video_loader_type, clip_start_sec=0.0,
+                                 clip_end_sec=None, num_frames=8, sample_fps=1)
         image_list = []
         for image in video_data:
             # save_debug_image(image_path, data_debug_path, data_debug_counter, get_rank(), img_idx=0)

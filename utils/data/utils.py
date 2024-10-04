@@ -5,6 +5,7 @@ import numpy as np
 import shutil
 from torch.utils.data.dataloader import default_collate
 import utils.data.DST as DST
+from einops import rearrange
 
 NUM_DEBUG_SAMPLE = 10
 
@@ -54,10 +55,20 @@ class DataCollatorPadToMaxLen:
         attention_mask = pad_sequence([default_collate(f['attention_mask']) for f in data],
                                         padding_value=0,
                                         batch_first=True)
-        frames_count = np.unique([f['image'][0].shape[0] for f in data])
-        if len(frames_count) > 1:
-            # dynamic videp
-            image = [f['image'][0] for f in data]
+        if isinstance(data[0]['image'], list):
+            # if it is motion token, must not be dynamic frames
+            frames_count = len(data[0]['image'][0][0])
+        else:
+            frames_count = len([f['image'][0].shape[0] for f in data])
+
+        if isinstance(data[0]['image'], list):
+
+            image = torch.concat([f['image'][0][0] for f in data], dim=0) #.reshape((len(data),) + data[0]["image"][0][0].shape)
+            image = rearrange(image, '(bs fn) seq hid -> bs fn seq hid', bs=len(data))
+            # print(image.shape)
+            motion = torch.concat([f['image'][0][1] for f in data], dim=0) #.reshape((len(data),) + data[0]["image"][0][1].shape)
+            motion = rearrange(motion, '(bs fn) hid -> bs fn hid', bs=len(data))
+            # print(motion.shape)
         else:
             _len = len(data[0]["image"][0].shape)
             image = torch.concat([default_collate(f['image']) for f in data], dim=0).reshape((-1,) + data[0]["image"][0].shape[-_len:])
@@ -70,4 +81,6 @@ class DataCollatorPadToMaxLen:
         batch['image_num'] = image_num
         batch['frames_count'] = frames_count
         batch['image_id'] = image_id
+        if isinstance(data[0]['image'], list):
+            batch['motion'] = motion
         return batch

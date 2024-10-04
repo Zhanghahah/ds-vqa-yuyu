@@ -16,6 +16,7 @@ class VisProjection_vit(nn.Module):
     def __init__(self, vis_config, lang_dim):
         super().__init__()
         # TODO: for now, hard-coded for ViT
+        # vis_config.hidden_size = vis_config.hidden_size * 4  #8b
         self.vis_layer = CLIPEncoderLayer(vis_config)
         self.projection = nn.Sequential( 
             nn.Linear(vis_config.hidden_size, lang_dim), # an example implementation
