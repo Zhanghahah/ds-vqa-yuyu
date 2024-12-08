@@ -16,15 +16,74 @@ pip install -r requirements.txt
 
 ## Data preparation
 
+### Download pretrain weights and databases
+
+[llama3_8b_instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B),                [clip-vit-large-patch14](https://huggingface.co/openai/clip-vit-large-patch14)
 
 
-## Quick Demos
-1. Place the datasets under `./dataset`
-2. Train the model. We provide experiment scripts under the folder `./scripts`. For instance, you can train the model with text and SMILES representations by:
+[LSVQ](https://github.com/baidut/PatchVQ),
+[KoNViD-1k](http://database.mmsp-kn.de/konvid-1k-database.html),
+[Youtube-UGC](https://media.withyoutube.com/),
+[LIVE-VQC](https://live.ece.utexas.edu/research/LIVEVQC/index.html),
+[Youtube-Gaming](https://live.ece.utexas.edu/research/LIVE-YT-Gaming/index.html)
+
+
+### Prompt data
+
+`data/prompt_data` contains the processed VQA data, and `data/question_prompt` contains the prompts. If you want to generate your own data, please refer to the paper and `preprocess_ds.py`.
+
+## Usage
+
+### Video feature extraction
+
+1. Extract video spatial feature
 ```bash
-bash ./training/training_scripts/run_7b.sh
+bash eval/eval_scripts/run_extract_frame.sh
 ```
-3. Evaluate the model.
+
+2. Extract motion feature
+
+For LSVQ datasets:
+
+```shell
+ CUDA_VISIBLE_DEVICES=0 python -u extract_SlowFast_features_LSVQ.py \
+ --database LSVQ \
+ --model_name SlowFast \
+ --resize 224 \
+ --feature_save_folder LSVQ_SlowFast_feature/ \
+ --videos_dir /data1/own_data/VQA/LSVQ/LSVQ \
+ >> logs/extract_SlowFast_features_LSVQ.log
+```
+
+  
+For KoNViD-1k, Youtube-UGC, LIVE-VQC, and Youtube-Gaming datasets:
+
+```shell
+ CUDA_VISIBLE_DEVICES=0 python -u python extract_motion_VQA.py \
+ --database KoNViD-1k \
+ --model_name SlowFast \
+ --resize 224 \
+ --feature_save_folder KoNViD-1k_SlowFast_feature/ \
+ --videos_dir /data1/own_data/VQA/youtube_ugc/h264 \
+ >> logs/extract_motion_VQA.log
+```
+
+### Training
+
+We provide experiment scripts under the folder `training/training_scripts`. For instance, you can train the model with text and videos by:
+
 ```bash
-bash ./eval/eval_scripts/run_single.sh 
+bash training/training_scripts/run_7b.sh
+```
+
+### Inference
+
+```bash
+bash eval/eval_scripts/run_single.sh 
+```
+
+### Evaluation
+
+```bash
+bash metric_csv.sh
 ```
