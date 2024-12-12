@@ -28,20 +28,51 @@ pip install -r requirements.txt
 [Youtube-Gaming](https://live.ece.utexas.edu/research/LIVE-YT-Gaming/index.html)
 
 
-### Prompt data
+### Data organization
 
-`data/prompt_data` contains the processed VQA data, and `data/question_prompt` contains the prompts. If you want to generate your own data, please refer to the paper and `preprocess_ds.py`.
+`data/video_text_data` contains the processed VQA data. The videos should be saved in the same directory as the metadata. The folder structure is as follows:
+
+```
+video_score_data
+├── LSVQ
+│   ├── LSVQ_1k_videos
+│   │   ├── a_split_metadata
+│   │   ├── [videos of LSVQ]
+│   ├── LSVQ_SlowFast_feature
+│   ├── LSVQ_feature_1fps
+├── KoNViD-1K
+│   ├── KoNViD_1k_videos
+│   │   ├── five
+│   │   ├── Konvid-1k_ds.json
+│   │   ├── [videos of KoNViD-1K]
+│   ├── KoNViD_1k_SlowFast_feature
+│   ├── KoNViD-1K_feature_1fps
+├── youtube_ugc
+│   ├── youtube_ugc_videos
+│   │   ├── five
+│   │   ├── youtube_ugc_ds.json
+│   │   ├── [videos of youtube_ugc]
+│   ├── youtube_ugc_SlowFast_feature
+│   ├── youtube_ugc_feature_1fps
+...
+```
+
+
+
+and `data/question_prompt` contains the quality prompts. If you want to generate your own data, please refer to the paper and `preprocess_ds.py`.
 
 ## Usage
 
 ### Video feature extraction
 
-1. Extract video spatial feature
+#### 1. Extract video spatial feature
+
 ```bash
-bash eval/eval_scripts/run_extract_frame.sh
+cd eval
+bash eval_scripts/run_extract_frame.sh
 ```
 
-2. Extract motion feature
+#### 2. Extract motion feature
 
 For LSVQ datasets:
 
@@ -50,8 +81,8 @@ For LSVQ datasets:
  --database LSVQ \
  --model_name SlowFast \
  --resize 224 \
- --feature_save_folder LSVQ_SlowFast_feature/ \
- --videos_dir /data1/own_data/VQA/LSVQ/LSVQ \
+ --feature_save_folder data/video_score_data/LSVQ/LSVQ_SlowFast_feature/ \
+ --videos_dir data/video_score_data/LSVQ/LSVQ_videos \
  >> logs/extract_SlowFast_features_LSVQ.log
 ```
 
@@ -60,26 +91,28 @@ For KoNViD-1k, Youtube-UGC, LIVE-VQC, and Youtube-Gaming datasets:
 
 ```shell
  CUDA_VISIBLE_DEVICES=0 python -u python extract_motion_VQA.py \
- --database KoNViD-1k \
+ --database youtube_ugc \
  --model_name SlowFast \
  --resize 224 \
- --feature_save_folder KoNViD-1k_SlowFast_feature/ \
- --videos_dir /data1/own_data/VQA/youtube_ugc/h264 \
+ --feature_save_folder data/video_score_data/youtube_ugc/youtube_ugc_SlowFast_feature/ \
+ --videos_dir data/video_score_data/youtube_ugc/youtube_ugc_videos \
  >> logs/extract_motion_VQA.log
 ```
 
 ### Training
 
-We provide experiment scripts under the folder `training/training_scripts`. For instance, you can train the model with text and videos by:
+We provide experiment scripts under the folder `training/training_scripts`. After checking the path in the script, you can train the model with text and videos by:
 
 ```bash
-bash training/training_scripts/run_7b.sh
+cd training
+bash training_scripts/run_7b.sh
 ```
 
 ### Inference
 
 ```bash
-bash eval/eval_scripts/run_single.sh 
+cd eval
+bash eval_scripts/run_single.sh 
 ```
 
 ### Evaluation

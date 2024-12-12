@@ -124,8 +124,8 @@ if __name__ == '__main__':
     parser.add_argument('--resize', type=int, default=224)
     parser.add_argument('--multi_gpu', type=bool, default=False)
     parser.add_argument('--gpu_ids', type=list, default=None)
-    parser.add_argument('--feature_save_folder', type=str, default='motion/youtube_ugc_SlowFast2_feature/')
-    parser.add_argument('--videos_dir', type=str, default='/data1/own_data/VQA/youtube_ugc/h264')
+    parser.add_argument('--feature_save_folder', type=str, default='data/video_score_data/youtube_ugc/youtube_ugc_SlowFast_feature/')
+    parser.add_argument('--videos_dir', type=str, default='data/video_score_data/youtube_ugc/youtube_ugc_videos')
 
     config = parser.parse_args()
 

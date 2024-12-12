@@ -100,21 +100,21 @@ class LSVQAlignDataset(VQADataset):
                  tokenizer,
                  vis_processor,
                  add_eos=True, ignore_instruction=True, save_video_feat=True, **kwargs):
-        vis_root = f"{data_path}/LSVQ/LSVQ"
-        feature_root = "/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_feature_8B_bf16"
-        motion_root = "/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_SlowFast2_feature"
+        vis_root = f"{data_path}/LSVQ/LSVQ_videos"
+        feature_root = f"{data_path}/LSVQ/LSVQ_feature_1fps"
+        motion_root = f"{data_path}/LSVQ/LSVQ_SlowFast_feature"
         assert os.path.isdir(
             vis_root), f"LSVQAlignDataset image directory {vis_root} not found, you need to check the image path"
 
         ann_paths = [
-            "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_train_ds_score.json",
-            "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_ds_score.json",
-            "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_train_ds_class.json",
-            "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_ds_class.json",
-            "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_1080p_ds_class.json",
-            "LSVQ/LSVQ/a_split_metadata/LSVQ_whole_test_1080p_ds.json"]
-        q_mos_path = os.path.join(data_path, 'a_prompt/prompt_list_noTask.json')
-        q_ass_path = os.path.join(data_path, 'a_prompt/prompt_list_noTask_ass.json')
+            "LSVQ_whole_train_ds_score.json",
+            "LSVQ_whole_test_ds_score.json",
+            "LSVQ_whole_train_ds_class.json",
+            "LSVQ_whole_test_ds_class.json",
+            "LSVQ_whole_test_1080p_ds_class.json",
+            "LSVQ_whole_test_1080p_ds.json"]
+        q_mos_path = os.path.join(data_path, 'question_prompt/prompt_list_noTask.json')
+        q_ass_path = os.path.join(data_path, 'question_prompt/prompt_list_noTask_ass.json')
 
         self.Q_MOS = json.load(open(q_mos_path, 'r'))
         self.Q_ASS = json.load(open(q_ass_path, 'r'))
@@ -127,7 +127,7 @@ class LSVQAlignDataset(VQADataset):
 
         real_ann_paths = []
         for ann_path in ann_paths:
-            ann_path = f"{data_path}/{ann_path}"
+            ann_path = f"{data_path}/LSVQ/LSVQ_videos/a_split_metadata/{ann_path}"
             real_ann_paths.append(ann_path)
             assert os.path.isfile(
                 ann_path), f"LSVQAlignDataset annotation file {ann_path} not found, you need to identify it from your folder"

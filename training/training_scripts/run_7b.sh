@@ -1,22 +1,20 @@
-#!/bin/bash
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: Apache-2.0
 
-# /data/zhangyu/ds-vqa-yuyu/training/output/DATE01-19_Epoch6_LR1e-3_data_lsvq_align_all_1
+
+
+# path to pretrain models
 VISION_MODEL=/data/zhangyu/own_data/public_models/models--openai--clip-vit-large-patch14
-LLM=/data2/zhaoxin/pretrain_models/llama3_8b_instruct #/data/zhangyu/own_data/public_models/Llama-2-7b-hf
-#LLM=/data/zhangyu/ds-vqa-yuyu/training/output/DATE01-19_Epoch6_LR1e-3_data_lsvq_align_all_1/epoch-5
-
+LLM=/data2/zhaoxin/pretrain_models/llama3_8b_instruct 
+##for finetune:  LLM=output/DATE01-19_Epoch6_LR1e-3_data_lsvq_align_all_1/epoch-5
 
 
 EPOCH=3
 ZERO_STAGE=3
 lr=1e-3
+DATA_PATH=data/video_score_data
 
 DATE=07-03
-DATA_PATH=/data/zhangyu/own_data/VQA
-#DATA="llava llava_dial otter_mimicit_cgd otter_mimicit_sd otter_mimicit_sn otter_mimicit_tvc otter_mimicit_vst llava_otter_blend sparkles_dialogue"
-DATA="lsvq_align"
+DATA="lsvq_align"  #  youtube_ugc, 1K, live_vqc
+
 DATA_SAMPLE="all"
 #IMAGE_PER_SAMPLE="3 2 1 1 1 1 1 1 1"
 IMAGE_PER_SAMPLE="1"
@@ -27,7 +25,7 @@ DATA_SAMPLE_CONCATE="${DATA_SAMPLE// /_}"
 IMAGE_CONCATE="${IMAGE_PER_SAMPLE// /_}"
 # 
 
-OUTPUT_Base=/data2/zhangyu/ds-vqa-output/
+OUTPUT_Base=output/
 
 OUTPUT_Dir=DATE${DATE}_Epoch${EPOCH}_LR${lr}_data_${DATA_CONCATE}_${DATA_SAMPLE_CONCATE}_${IMAGE_CONCATE}
 

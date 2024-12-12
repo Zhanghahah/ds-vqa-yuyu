@@ -197,7 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('--no_fit', action='store_true')
     config = parser.parse_args()
 
-    meta_data_path = "./data/origin_data/"
+    meta_data_path = "data/origin_data/"
     label_file_dict = {"Konvid-1k": "KoNViD_1k_mos.csv", "LSVQ_1080p": "LSVQ_whole_test_1080p.csv", "LSVQ": "LSVQ_whole_test.csv", "LBVD": "LBVD_whole.csv", "LIVE-VQC": "LIVE-VQC_.csv", "LIVE-Gaming": "LIVE_Gaming.csv", "YT-ugc": "youtube_ugc_whole.csv"}
     label_file = meta_data_path + label_file_dict[config.dataset]
     metric_cal(config.in_file, label_file, config)

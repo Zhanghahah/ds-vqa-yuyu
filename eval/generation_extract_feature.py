@@ -75,18 +75,18 @@ def parse_args():
     #     default=4096,
     #     help="The maximum sequence length.",
     # )
-    parser.add_argument(
-        "--checkpoint_path",
-        default=None,
-        type=str,
-        help="path to pretrained model",
-    )
-    parser.add_argument('--checkpoint_names',
-                        nargs='*',
-                        default=['runing_check_stage2_v3_epoch10', ],
-                        help='Path to the training dataset. Accepted format:'
-                             '1) a single data path, 2) multiple datasets in the'
-                             'form: dataset1-path dataset2-path ...')
+    # parser.add_argument(
+    #     "--checkpoint_path",
+    #     default=None,
+    #     type=str,
+    #     help="path to pretrained model",
+    # )
+    # parser.add_argument('--checkpoint_names',
+    #                     nargs='*',
+    #                     default=['runing_check_stage2_v3_epoch10', ],
+    #                     help='Path to the training dataset. Accepted format:'
+    #                          '1) a single data path, 2) multiple datasets in the'
+    #                          'form: dataset1-path dataset2-path ...')
     # parser.add_argument(
     #     "--model_name",
     #     default="dsvl",
@@ -149,7 +149,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    with open(os.path.join(args.eval_root, f'a_split_metadata/{args.eval_data}.json'), 'r') as file:
+    with open(os.path.join(args.eval_root, f'{args.eval_data}.json'), 'r') as file:
         data = json.load(file)
 
     if args.seed is not None:
@@ -171,73 +171,74 @@ def main():
     feature_save_path = Path(args.save_path)
     error_case = []
 
-    for ck_name in args.checkpoint_names:
-        print(ck_name)
-        ck_path = os.path.join(args.checkpoint_path, ck_name)
-        print(ck_path)
-        if ck_path is not None:
-            model.load_state_dict(torch.load(os.path.join(ck_path, 'pytorch_model.bin'), map_location='cpu'),
-                                  strict=False)  # Z3 wouldn't save pos embeddings (vis and rope)
-        else:
-            Warning("No checkpoint loaded so you cannot genereate meaningful results")
+    # for ck_name in args.checkpoint_names:
+    #     print(ck_name)
+    #     ck_path = os.path.join(args.checkpoint_path, ck_name)
+    #     print(ck_path)
+    #     if ck_path is not None:
+    #         model.load_state_dict(torch.load(os.path.join(ck_path, 'pytorch_model.bin'), map_location='cpu'),
+    #                               strict=False)  # Z3 wouldn't save pos embeddings (vis and rope)
+    #     else:
+    #         Warning("No checkpoint loaded so you cannot genereate meaningful results")
 
 
-        # model = model.cuda().half()
-        model = model.eval()
-        # model.projection = model.projection.to('cuda')
-        model.vis_encoder = model.vis_encoder.to('cuda')
-        model = model.half()
-        print_rank_0(model)
-        for eval_idx, ann in tqdm(enumerate(data['annotations'])):
-
-            video_name = ann["image_id"]
-            if ".mp4" not in video_name:
-            
-                video_path = os.path.join(args.eval_root, video_name + ".mp4")
-            else:
-                video_path = os.path.join(args.eval_root, video_name)
-            try:
-                video_data = load_and_transform_video(video_path,
-                                                    video_decode_backend=args.video_loader_type, clip_start_sec=0.0,
-                                                    clip_end_sec=None, num_frames=8)
-            except:
-                print(f'{args.eval_data}-------------------------------------{video_path}')
-                error_case.append(video_path)
-                continue
-            print(f'{args.eval_data}-------------------------------------{video_path}')
-
-            image_list = []
-            for image in video_data:
-                image = image_processor.preprocess(image)  # (720, 1280, 3)  #
-                try:
-                    image = image['pixel_values'][0]
-                    image_list.append(image)
-                except:
-                    continue
-            if len(image_list) > 0:
-
-                image_tensor = torch.from_numpy(np.stack(image_list, 0)).unsqueeze(0).cuda().half() # cat all images
-            else:
-
-                raise ValueError("No image provided. Did not fix this in the modeling side yet.")
-
-
-            img_feature = model.generate(image_tensor)
-            # img_feature = model.generate(image_tensor, input_ids, generation_length=256)
-
-
-            img_feature = img_feature.squeeze()  ## out: [8, 257, 1024]
-            
-            save_path_prefix = feature_save_path / str(video_name)
-            if not os.path.exists(save_path_prefix):
-                os.makedirs(save_path_prefix)    
-            for frame_id in range(img_feature.size()[0]):
-                frame_name = str(frame_id) + ".pt"
-                torch.save(img_feature[frame_id,:,:],save_path_prefix / frame_name)
-            print(video_name + " "+ frame_name +" saved")
+    # model = model.cuda().half()
+    model = model.eval()
+    # model.projection = model.projection.to('cuda')
+    model.vis_encoder = model.vis_encoder.to('cuda')
+    model = model.half()
+    print_rank_0(model)
+    for eval_idx, ann in tqdm(enumerate(data['annotations'])):
+        if ann['ann_type'] == 'class':
+            continue
+        video_name = ann["image_id"]
+        if ".mp4" not in video_name:
         
-        tmp = pd.DataFrame({'LBVD error case': error_case})
-        tmp.to_csv('/data1/zhangyu/own_data/VQA/error/LBVD_error_case.csv')    
+            video_path = os.path.join(args.eval_root, video_name + ".mp4")
+        else:
+            video_path = os.path.join(args.eval_root, video_name)
+        try:
+            video_data = load_and_transform_video(video_path,
+                                                video_decode_backend=args.video_loader_type, clip_start_sec=0.0,
+                                                clip_end_sec=None, num_frames=4)
+        except:
+            print(f'{args.eval_data}-------------------------------------{video_path}')
+            error_case.append(video_path)
+            continue
+        print(f'{args.eval_data}-------------------------------------{video_path}')
+
+        image_list = []
+        for image in video_data:
+            image = image_processor.preprocess(image)  # (720, 1280, 3)  #
+            try:
+                image = image['pixel_values'][0]
+                image_list.append(image)
+            except:
+                continue
+        if len(image_list) > 0:
+
+            image_tensor = torch.from_numpy(np.stack(image_list, 0)).unsqueeze(0).cuda().half() # cat all images
+        else:
+
+            raise ValueError("No image provided. Did not fix this in the modeling side yet.")
+
+
+        img_feature = model.generate(image_tensor)
+        # img_feature = model.generate(image_tensor, input_ids, generation_length=256)
+
+
+        img_feature = img_feature.squeeze()  ## out: [8, 257, 1024]
+        
+        save_path_prefix = feature_save_path / str(video_name)
+        if not os.path.exists(save_path_prefix):
+            os.makedirs(save_path_prefix)    
+        for frame_id in range(img_feature.size()[0]):
+            frame_name = str(frame_id) + ".pt"
+            torch.save(img_feature[frame_id,:,:],save_path_prefix / frame_name)
+        # print(video_name + " "+ frame_name +" saved")
+        
+        tmp = pd.DataFrame({'error case': error_case})
+        tmp.to_csv(f'{args.save_path}/error_case.csv')    
 
 
 

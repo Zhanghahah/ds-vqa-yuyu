@@ -49,15 +49,15 @@ class LiveVQCDataset(VQADataset):
                  tokenizer,
                  vis_processor,
                  add_eos=True, ignore_instruction=True,save_video_feat=False, **kwargs):
-        vis_root = f"{data_path}"
+        vis_root = f"{data_path}/LIVE-VQC/LIVE-VQC_videos"
         assert os.path.isdir(vis_root), f"LiveVQCDataset image directory {vis_root} not found, you need to check the image path"
 
-        feature_root = "/data1/zhangyu/own_data/VQA/live_vqc/live_vqc_feature_1fps"
-        motion_root = "/data1/zhangyu/own_data/VQA/live_vqc/LIVEVQC_SlowFast2_feature"
+        feature_root = f"{data_path}/LIVE-VQC/LIVE-VQC_feature_1fps"
+        motion_root = f"{data_path}/LIVE-VQC/LIVE-VQC_SlowFast_feature"
         self.save_video_feat = save_video_feat
-        ann_paths = ["live_vqc/Video/LIVE-VQC_train_ds.json"]  #  "LBVD_test_ds.json"
-        q_mos_path = os.path.join(data_path, 'a_prompt/prompt_list_noTask.json')
-        q_ass_path = os.path.join(data_path, 'a_prompt/prompt_list_noTask_ass.json')
+        ann_paths = ["/LIVE-VQC/LIVE-VQC_videos/LIVE-VQC_ds.json"]  #  "LBVD_test_ds.json"
+        q_mos_path = os.path.join(data_path, 'question_prompt/prompt_list_noTask.json')
+        q_ass_path = os.path.join(data_path, 'question_prompt/prompt_list_noTask_ass.json')
 
         self.Q_MOS = json.load(open(q_mos_path, 'r'))
         self.Q_ASS = json.load(open(q_ass_path, 'r'))

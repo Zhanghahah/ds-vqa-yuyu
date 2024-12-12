@@ -19,20 +19,20 @@ from .lsvq_dataset import load_and_transform_video
 import numpy as np
 import torch
 
-class KokiDataset(VQADataset):
+class YoutubeUGCataset(VQADataset):
     def __init__(self, data_path,
                  data_debug_path,
                  per_sample_image,
                  video_loader_type,
                  tokenizer,
                  vis_processor,
-                 add_eos=True, ignore_instruction=True,save_video_feat=False, **kwargs):
-        vis_root = f"{data_path}/KoNViD-1K/KoNViD_1k_videos"
-        assert os.path.isdir(vis_root), f"KokiDataset image directory {vis_root} not found, you need to check the image path"
+                 add_eos=True, ignore_instruction=True, save_video_feat=False, **kwargs):
+        vis_root = f"{data_path}/youtube_ugc/youtube_ugc_videos"
+        assert os.path.isdir(vis_root), f"YoutubeUGCataset image directory {vis_root} not found, you need to check the image path"
 
-        feature_root = f"{data_path}/KoNViD-1K/KoNViD-1K_feature_1fps"
+        feature_root = f"{data_path}/youtube_ugc/youtube_ugc_feature_1fps"
         self.save_video_feat = save_video_feat
-        ann_paths = ["KoNViD-1K/KoNViD_1k_videos/Konvid-1k_ds.json"]  #  "LBVD_test_ds.json"
+        ann_paths = ["youtube_ugc/youtube_ugc_videos/youtube_ugc_ds.json"]  #  "LBVD_test_ds.json"
         q_mos_path = os.path.join(data_path, 'question_prompt/prompt_list_noTask.json')
         q_ass_path = os.path.join(data_path, 'question_prompt/prompt_list_noTask_ass.json')
 
@@ -66,6 +66,8 @@ class KokiDataset(VQADataset):
     def process_image(self, ann, data_debug_path=None, data_debug_counter=0):
         if self.save_video_feat:
             feature_path = os.path.join(self.feature_root, ann["image_id"])
+            if not os.path.exists(feature_path):
+                feature_path = os.path.join(self.feature_root, ann["image_id"] + ".mp4")
             image_list = []
             for img_feat_file in os.listdir(feature_path):
                 img_feat = torch.load(os.path.join(feature_path, img_feat_file)).unsqueeze(0)

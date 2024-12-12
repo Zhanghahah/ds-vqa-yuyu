@@ -80,10 +80,10 @@ def main(config):
     resize = config.resize
         
     ## training data
-    
-    datainfo_train = 'data/LSVQ_whole_train.csv'
-    datainfo_test = 'data/LSVQ_whole_test.csv'
-    datainfo_test_1080p = 'data/LSVQ_whole_test_1080p.csv'
+
+    datainfo_train = 'data/origin_data/LSVQ_whole_train.csv'
+    datainfo_test = 'data/origin_data/LSVQ_whole_test.csv'
+    datainfo_test_1080p = 'data/origin_data/LSVQ_whole_test_1080p.csv'
     transformations_test = transforms.Compose([transforms.Resize([resize, resize]),transforms.ToTensor(),\
         transforms.Normalize(mean = [0.45, 0.45, 0.45], std = [0.225, 0.225, 0.225])])
     trainset = VideoDataset_NR_LSVQ_SlowFast_feature(config.videos_dir, datainfo_train, transformations_test, resize)
@@ -155,8 +155,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--resize', type=int, default=224)
     parser.add_argument('--gpu_ids', type=list, default=None)
-    parser.add_argument('--feature_save_folder', type=str, default='motion/LSVQ_SlowFast2_feature')
-    parser.add_argument('--videos_dir', type=str)
+    parser.add_argument('--feature_save_folder', type=str, default='data/video_score_data/LSVQ/LSVQ_SlowFast_feature/')
+    parser.add_argument('--videos_dir', type=str, default='data/video_score_data/LSVQ/LSVQ_videos')
 
     config = parser.parse_args()
 

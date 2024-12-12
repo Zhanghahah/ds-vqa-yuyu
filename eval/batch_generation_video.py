@@ -203,8 +203,8 @@ def main():
         print_rank_0(model)
         for eval_idx, ann in tqdm(enumerate(data['annotations'])):
             video_name = ann["image_id"]
-            if ann['ann_type'] == 'score':
-                continue
+            # if ann['ann_type'] == 'score':
+            #     continue
             video_path = os.path.join(args.eval_root, video_name + ".mp4")
             feature_path = os.path.join(feature_root, video_name)
             if not os.path.exists(feature_path):
@@ -335,6 +335,8 @@ def main():
                 extend_ids.pop(0)
             system_instruct = system_instruct + full_prompt_ids + extend_ids  # entire input as system instruction for simplicity
             system_instruct = system_instruct + [tokenizer.eos_token_id]  # add eos token
+        if not os.path.exists(args.output_filename):
+            os.makedirs(args.output_filename)
         with open(f'{args.output_filename}/pred_{model_type}_{ck_name}.csv', mode='w', newline='',
                   encoding='utf-8') as file:
             writer = csv.writer(file)
