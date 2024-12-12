@@ -476,7 +476,8 @@ class VideoDataset_NR_SlowFast_feature(data.Dataset):
             video_clip_min = 20
         elif self.database_name == 'LIVE-VQC':
             video_clip_min = 10
-
+        elif self.database_name == 'aigc':
+            video_clip_min = 1
         video_length_clip = 32             
 
         transformed_frame_all = torch.zeros([video_length, video_channel, self.resize, self.resize])

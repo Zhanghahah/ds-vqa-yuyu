@@ -90,7 +90,7 @@ For LSVQ datasets:
 For KoNViD-1k, Youtube-UGC, LIVE-VQC, and Youtube-Gaming datasets:
 
 ```shell
- CUDA_VISIBLE_DEVICES=0 python -u python extract_motion_VQA.py \
+ CUDA_VISIBLE_DEVICES=0 python -u extract_motion_VQA.py \
  --database youtube_ugc \
  --model_name SlowFast \
  --resize 224 \
