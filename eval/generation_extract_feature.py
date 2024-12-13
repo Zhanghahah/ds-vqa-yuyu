@@ -113,7 +113,7 @@ def parse_args():
     )
     parser.add_argument(
         "--eval_root",
-        default="/data/zhangyu/own_data/VQA/LSVQ/LSVQ/"
+        default="data/video_score_data/LSVQ/LSVQ_videos"
     )
 
     # parser.add_argument(
@@ -137,7 +137,6 @@ def parse_args():
     parser.add_argument(
         "--save_path",
         type=str,
-        default='/data1/zhangyu/own_data/VQA/',
         help="Path to save feature"
     )
 
@@ -167,19 +166,8 @@ def main():
     )
 
 
-    # save_path = Path("/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_feature_1fps")
     feature_save_path = Path(args.save_path)
     error_case = []
-
-    # for ck_name in args.checkpoint_names:
-    #     print(ck_name)
-    #     ck_path = os.path.join(args.checkpoint_path, ck_name)
-    #     print(ck_path)
-    #     if ck_path is not None:
-    #         model.load_state_dict(torch.load(os.path.join(ck_path, 'pytorch_model.bin'), map_location='cpu'),
-    #                               strict=False)  # Z3 wouldn't save pos embeddings (vis and rope)
-    #     else:
-    #         Warning("No checkpoint loaded so you cannot genereate meaningful results")
 
 
     # model = model.cuda().half()

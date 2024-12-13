@@ -14,17 +14,20 @@ class postprocess():
         self.count = {}
         self.error_score = {}
     def extract_first_digit(self, text_raw):
-
-
         if text_raw['output_id'] not in self.count.keys():
             self.count[text_raw['output_id']] = 0
             self.error_score[text_raw['output_id']] = []
-        text = repr(text_raw['score'])
+        text = repr(text_raw['score'])    
+        # text = repr(text_raw['score'])
         # text = str(eval(text_raw['score'])[0]*100)
 
         if re.search(r"\d+", text) == None or float(re.search(r"\d+", text).group()) == 0:  
             self.error_case(text_raw, 'this text is 0')
             return ('60')
+        elif text.count('.') == 0:
+            score = re.sub('\D', '', text)  
+            score = score.lstrip('0')[:2] + '.'
+            return score
         elif text.count('.') != 1:
             self.error_case(text_raw, 'this text have not single .')
             score = re.sub('\D', '', text)  
@@ -201,3 +204,4 @@ if __name__ == '__main__':
     label_file_dict = {"Konvid-1k": "KoNViD_1k_mos.csv", "LSVQ_1080p": "LSVQ_whole_test_1080p.csv", "LSVQ": "LSVQ_whole_test.csv", "LBVD": "LBVD_whole.csv", "LIVE-VQC": "LIVE-VQC_.csv", "LIVE-Gaming": "LIVE_Gaming.csv", "YT-ugc": "youtube_ugc_whole.csv"}
     label_file = meta_data_path + label_file_dict[config.dataset]
     metric_cal(config.in_file, label_file, config)
+

@@ -2,10 +2,10 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# /data/zhangyu/ds-vqa-yuyu/training/output/DATE01-19_Epoch6_LR1e-3_data_lsvq_align_all_1
-VISION_MODEL=/data/zhangyu/own_data/public_models/models--openai--clip-vit-large-patch14
-LLM=/data2/zhaoxin/pretrain_models/llama3_8b_instruct
-#LLM=/data1/zhangyu/ds-vqa-output/DATE04-25_Epoch6_LR1e-3_data_lsvq_align_all_1/epoch-4
+
+VISION_MODEL=public_models/models--openai--clip-vit-large-patch14
+LLM=pretrain_models/llama3_8b_instruct
+
 
 
 
@@ -16,7 +16,7 @@ lr=1e-3
 
 PRE_DATE=04-25
 DATE=06-26-ft-live_vqc
-DATA_PATH=/data1/zhangyu/own_data/VQA
+DATA_PATH=data
 #DATA="llava llava_dial otter_mimicit_cgd otter_mimicit_sd otter_mimicit_sn otter_mimicit_tvc otter_mimicit_vst llava_otter_blend sparkles_dialogue"
 DATA="live_vqc"
 PRE_DATA="lsvq_align"
@@ -31,7 +31,7 @@ DATA_SAMPLE_CONCATE="${DATA_SAMPLE// /_}"
 IMAGE_CONCATE="${IMAGE_PER_SAMPLE// /_}"
 #
 
-OUTPUT_Base=/data2/zhangyu/ds-vqa-output/
+OUTPUT_Base=ds-vqa-output/
 
 PRE_OUTPUT_Dir=DATE${PRE_DATE}_Epoch${PRE_EPOCH}_LR${lr}_data_${PRE_DATA_CONCATE}_${DATA_SAMPLE_CONCATE}_${IMAGE_CONCATE}
 OUTPUT_Dir=DATE${DATE}_Epoch${EPOCH}_LR${lr}_data_${DATA_CONCATE}_${DATA_SAMPLE_CONCATE}_${IMAGE_CONCATE}

@@ -32,5 +32,5 @@ def cc_sub_align_dataset_validation(dataset_path):
 
 
 if __name__ == '__main__':
-    cc_sub_align_folder_path = '/data/zhangyu/own_data/VQA/cc_sbu_align'
+    cc_sub_align_folder_path = 'own_data/VQA/cc_sbu_align'
     cc_sub_align_dataset_validation(cc_sub_align_folder_path)

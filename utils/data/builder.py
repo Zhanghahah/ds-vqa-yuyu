@@ -22,7 +22,6 @@ from .lsvq_dataset_align import LSVQAlignDataset
 from .lbvd_dataset import LBVDDataset
 from .Koki_datasets import KokiDataset
 from .youtube_ugc_dataset import YoutubeUGCataset
-from .kvq_dataset import KVQDataset
 from .live_vqc_dataset import LiveVQCDataset
 from utils.utils import print_rank_0
 
@@ -169,13 +168,6 @@ def build_dataset(data_path, data_debug_path, dataset_name, dataset_sample,
         )
     elif dataset_name == "live_vqc":
         dataset = LiveVQCDataset(
-            data_path,
-            data_debug_path,
-            dataset_concatenate_samples,
-            **kwargs,
-        )
-    elif dataset_name == "kvq":
-        dataset = KVQDataset(
             data_path,
             data_debug_path,
             dataset_concatenate_samples,

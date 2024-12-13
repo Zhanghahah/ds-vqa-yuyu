@@ -1,7 +1,7 @@
 from transformers import AutoModelForCausalLM
 import torch
 
-PATH = "/data/zhangyu/own_data/public_models/Qwen-VL-Chat"
+PATH = "own_data/public_models/Qwen-VL-Chat"
 
 
 model = AutoModelForCausalLM.from_pretrained(PATH,

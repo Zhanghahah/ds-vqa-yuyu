@@ -2,8 +2,8 @@
 
 
 # path to pretrain models
-VISION_MODEL=/data/zhangyu/own_data/public_models/models--openai--clip-vit-large-patch14
-LLM=/data2/zhaoxin/pretrain_models/llama3_8b_instruct 
+VISION_MODEL=openai/clip-vit-large-patch14
+LLM=meta/llama3_8b_instruct 
 ##for finetune:  LLM=output/DATE01-19_Epoch6_LR1e-3_data_lsvq_align_all_1/epoch-5
 
 
@@ -13,7 +13,7 @@ lr=1e-3
 DATA_PATH=data/video_score_data
 
 DATE=07-03
-DATA="lsvq_align"  #  youtube_ugc, 1K, live_vqc
+DATA="lsvq_align"  #  lsvq_align or youtube_ugc or  1K or live_vqc
 
 DATA_SAMPLE="all"
 #IMAGE_PER_SAMPLE="3 2 1 1 1 1 1 1 1"

@@ -119,8 +119,7 @@ def parse_args():
         help="path to eval data",
     )
     parser.add_argument(
-        "--eval_root",
-        default="/data/zhangyu/own_data/VQA/LSVQ/LSVQ"
+        "--eval_root"
     )
     parser.add_argument('--use_img_feature',
                         action='store_true',
@@ -143,12 +142,10 @@ def parse_args():
         help="The maximum sequence length.",
     )
     parser.add_argument(
-        "--feature_root",
-        default="/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_feature_1fps"
+        "--feature_root"
     )
     parser.add_argument(
-        "--motion_root",
-        default="/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_SlowFast2_feature"
+        "--motion_root"
     )
 
     parser = deepspeed.add_config_arguments(parser)
@@ -161,8 +158,8 @@ def main():
     args = parse_args()
     with open(os.path.join(args.eval_root, f'{args.eval_data}.json'), 'r') as file:
         data = json.load(file)
-    Q_MOS = json.load(open(os.path.join(args.eval_root, '../../a_prompt/prompt_list_noTask.json'), 'r'))
-    Q_ASS = json.load(open(os.path.join(args.eval_root, '../../a_prompt/prompt_list_noTask_ass.json'), 'r'))
+    Q_MOS = json.load(open(os.path.join(args.eval_root, '../../question_prompt/prompt_list_noTask.json'), 'r'))
+    Q_ASS = json.load(open(os.path.join(args.eval_root, '../../question_prompt/prompt_list_noTask_ass.json'), 'r'))
 
     feature_root = args.feature_root
     motion_root = args.motion_root

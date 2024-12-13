@@ -6,8 +6,8 @@
 #EVAL_DATSET=eval_robustness  eval_single eval_comprehensive (see the json in the folder ./eval_data/*.json)
 MAIN_PATH=$1
 #VISION_MODEL=/blob/transformers_cache/qwen-clip #openai/clip-vit-large-patch14
-VISION_MODEL=/data/zhangyu/own_data/public_models/models--openai--clip-vit-large-patch14
-LLM=/data/zhangyu/own_data/public_models/Llama-2-7b-hf #meta-llama/Llama-2-7b
+VISION_MODEL=public_models/models--openai--clip-vit-large-patch14
+LLM=public_models/Llama-2-7b-hf #meta-llama/Llama-2-7b
 for EVAL_DATSET in eval_single eval_comprehensive eval_robustness 
 do
     SAVE_PATH=eval/results/${EVAL_DATSET}

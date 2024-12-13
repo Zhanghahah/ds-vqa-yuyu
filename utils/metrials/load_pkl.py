@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument(
         "--embed_path_prefix",
         type=str,
-        default='/data1/zhangyu/own_data/VQA/KVQ/embeding/train/',
+        default='/own_data/VQA/KVQ/embeding/train/',
         help="LLM embedding path prefix",
     )
 

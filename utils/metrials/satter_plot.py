@@ -144,13 +144,10 @@ def load_pkl(path):
         return pickle.load(f)
 
 
-### B: /data/zhangyu/yuruijie/yuyu_paper_plot/scatter_0208/metrials/top_0_seq3_src_gt_preds_condition_optim_plot.pkl
-### C: /data/zhangyu/yuruijie/yuyu_paper_plot/scatter_0208/metrials/11-07_BH_seq3_src_gt_preds_condition_optim_plot.pkl
-
 if __name__ == '__main__':
-    hte_data_path_prefix = "/data/zhangyu/process_vis_data"
-    vis_data_b = "/data/zhangyu/yuruijie/yuyu_paper_plot/scatter_0208/metrials/top_0_seq3_src_gt_preds_condition_optim_plot.pkl"
-    vis_data_c = "/data/zhangyu/qihang/code/11-07_BH_seq3_src_gt_preds_condition_optim_plot_78.pkl"
+    hte_data_path_prefix = "process_vis_data"
+    vis_data_b = "metrials/top_0_seq3_src_gt_preds_condition_optim_plot.pkl"
+    vis_data_c = "code/11-07_BH_seq3_src_gt_preds_condition_optim_plot_78.pkl"
     vis_data_dict = load_pkl(vis_data_c)
     # top 0:
     # cn_process:

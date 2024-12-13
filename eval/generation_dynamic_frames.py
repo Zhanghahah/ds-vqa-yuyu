@@ -112,12 +112,11 @@ def parse_args():
     )
     parser.add_argument(
         "--eval_root",
-        default="/data1/zhangyu/own_data/VQA/youtube_ugc/h264/"
+        type=str,
     )
     parser.add_argument(
         "--eval_feat",
-        # default="/data1/zhangyu/own_data/VQA/LSVQ/LSVQ_feature_1fps"
-        default="/data1/zhangyu/own_data/VQA/youtube_ugc/youtube_ugc_feature_1fps"
+        type=str,
     )
 
     parser.add_argument(
