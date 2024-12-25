@@ -108,11 +108,7 @@ class LSVQAlignDataset(VQADataset):
 
         ann_paths = [
             "LSVQ_whole_train_ds_score.json",
-            "LSVQ_whole_test_ds_score.json",
-            "LSVQ_whole_train_ds_class.json",
-            "LSVQ_whole_test_ds_class.json",
-            "LSVQ_whole_test_1080p_ds_class.json",
-            "LSVQ_whole_test_1080p_ds.json"]
+            "LSVQ_whole_train_ds_class.json"]
         q_mos_path = os.path.join(data_path, 'question_prompt/prompt_list_noTask.json')
         q_ass_path = os.path.join(data_path, 'question_prompt/prompt_list_noTask_ass.json')
 
